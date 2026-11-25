@@ -197,6 +197,10 @@ export function renderProfileEditor(host, state, actions) {
     const value = getPath(profile, d.path);
     const ctx = {
       id: fieldId(name, d.key), keyboxFiles,
+      // The patch widget's one-tap "load current value" chip: this field's harvested/live
+      // reading, when resolveHint below would otherwise be the only place it's shown. Only the
+      // patch-type fields use it; harmless (unused) for every other widget.
+      resolvedValue: resolved[d.key],
       addApp: (pkg) => actions.onAddApp(name, pkg),
       removeApp: (pkg) => actions.onRemoveApp(name, pkg),
       // The scope widget only shows the current picks and a button that opens the picker;

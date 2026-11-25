@@ -94,9 +94,20 @@ function patchWidget(d, value, onChange, ctx) {
     onChange(d.path, v);
   };
   const picks = (d.picks || ["system_property", "today", "no"]).map(resolvePick);
-  const chips = el("div", { class: "quickpicks" },
-    picks.map((p) =>
-      el("button", { type: "button", class: "chip clickable", text: p.label, onclick: () => pick(p.value) })));
+  const chipEls = picks.map((p) =>
+    el("button", { type: "button", class: "chip clickable", text: p.label, onclick: () => pick(p.value) }));
+  // One-tap "load the device's actual current value", mirroring the single button Tricky
+  // Addon offers for this: ctx.resolvedValue is this field's harvested/live reading (from
+  // config-controller's resolvedLevels()), so this writes the literal date/version — not the
+  // symbolic "system_property" token above, which instead re-resolves on every push. Omitted
+  // when nothing has been harvested yet (ctx.resolvedValue empty).
+  if (ctx.resolvedValue) {
+    chipEls.push(el("button", {
+      type: "button", class: "chip clickable cta", text: "Load current (" + ctx.resolvedValue + ")",
+      onclick: () => pick(ctx.resolvedValue),
+    }));
+  }
+  const chips = el("div", { class: "quickpicks" }, chipEls);
   return el("div", { class: "patch" }, [input, chips]);
 }
 
