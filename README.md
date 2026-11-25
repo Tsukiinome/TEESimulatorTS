@@ -120,18 +120,6 @@ Controls global `ro.boot.*` property spoofing. Values: `auto` (default), `force`
 
 In `auto`, Oplus-family devices (OnePlus/OPPO/realme/Oplus) skip boot-state prop spoofing to avoid conflicts with vendor TEE services such as ultrasonic fingerprint calibration. Create `/data/adb/tricky_store/boot_props_mode` with `force` to restore the old behavior, or `disable` to turn it off on any device.
 
-## Building from source
-
-You need JDK 21, the Android SDK and NDK 29, Rust (stable) with the `aarch64-linux-android` target, and `cargo-ndk`.
-
-```bash
-git clone --recursive https://github.com/Enginex0/TEESimulator-RS.git
-cd TEESimulator-RS
-./gradlew zipRelease zipDebug
-```
-
-The ZIPs land in `out/`. Gradle runs `cargo ndk` for you to cross-compile `libcertgen.so`. To build on CI instead, push to `main` or run Actions > Build > Run workflow.
-
 ## Compatibility
 
 | Root manager | Status |
