@@ -23,6 +23,11 @@ object ConfigStore {
     data class ProfileConfig(
         val id: String,
         val keybox: String, // relative to Const.DATA_DIR
+        // Optional backup keybox (relative to Const.DATA_DIR, same dir). [Resolver] uses it only
+        // when [keybox] itself is missing, unparseable, or [KeyboxInspector.isHealthy] calls it
+        // unhealthy (a broken chain or a revoked serial) -- so a keybox Google revokes doesn't take
+        // the profile down, it falls through to this one instead. Blank means no fallback.
+        val keyboxFallback: String,
         val mode: String, // "patch" | "generation"
         val patchSystem: String,
         val patchVendor: String,
@@ -88,6 +93,19 @@ object ConfigStore {
             val keyboxFile = File(Const.DATA_DIR, keybox)
             if (!keyboxFile.isFile)
                 throw ConfigException("profile '$id' keybox not found: ${keyboxFile.absolutePath}")
+
+            // Optional: a blank fallback is fine (no fallback configured), but a NON-blank one must
+            // name a file that actually exists -- same requirement as the primary keybox, so a typo
+            // here fails loudly at save time rather than silently at resolve time, when the primary
+            // happens to break.
+            val keyboxFallback = p.optString("keyboxFallback", "").trim()
+            if (keyboxFallback.isNotEmpty()) {
+                val fallbackFile = File(Const.DATA_DIR, keyboxFallback)
+                if (!fallbackFile.isFile)
+                    throw ConfigException(
+                        "profile '$id' fallback keybox not found: ${fallbackFile.absolutePath}"
+                    )
+            }
 
             // Operation mode: patch (re-sign the real hardware attestation) or generation (mint the
             // whole key). Defaults to patch; a level whose hardware is unavailable still falls back
@@ -168,6 +186,7 @@ object ConfigStore {
                 ProfileConfig(
                     id = id,
                     keybox = keybox,
+                    keyboxFallback = keyboxFallback,
                     mode = mode,
                     // Defaults for an omitted field mirror the shipped config: a current-month
                     // system patch and the conventional YYYY-MM-05 vendor/boot patch; an absent

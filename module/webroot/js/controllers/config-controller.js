@@ -39,6 +39,7 @@ export function create(mount) {
   let editorOverlay = null;  // { close } from openOverlay
   let openGroups = {};       // per-group disclosure state, { groupId: bool }
   let harvest = null;        // the daemon's harvest record, for the resolution hints
+  let activeKeyboxes = null; // { profileId: { keybox, usingFallback, primaryHealthy } }, from /status
 
   // Scope drill-in state (a second overlay opened ON TOP of the editor). Only one is open
   // at a time. `packagesCache` is the live device app list fetched lazily the first time the
@@ -174,6 +175,7 @@ export function create(mount) {
     try {
       const st = await getStatus();
       harvest = (st && st.harvest) || null;
+      activeKeyboxes = (st && st.activeKeyboxes) || null;
     } catch {
       /* keep whatever we had */
     }
@@ -201,8 +203,17 @@ export function create(mount) {
     };
   }
 
+  // Last-known {keybox, usingFallback, primaryHealthy} the daemon actually signed `name`'s
+  // profile with, or null before the first successful resolve (no config pushed yet, or the
+  // daemon's too old to report it). Purely informational -- the editor's own validation (the
+  // file exists) is what gates saving; this is what's really happening right now.
+  function keyboxStatusFor(name) {
+    return (activeKeyboxes && activeKeyboxes[name]) || null;
+  }
+
   function renderList() {
-    renderProfileList(mount, { config, errors, dirty, autoCounts: autoCounts() }, listActions);
+    renderProfileList(
+      mount, { config, errors, dirty, autoCounts: autoCounts(), keyboxStatus: activeKeyboxes }, listActions);
   }
 
   // Which OTHER profile (if any) already owns auto-include, relative to `name`. Only one profile
@@ -220,7 +231,8 @@ export function create(mount) {
     renderProfileEditor(
       editorHost,
       { config, name: editing, errors, keyboxFiles, openGroups, resolved: resolvedLevels(),
-        scopeMeta: scopeMeta(), autoTakenBy: autoTakenBy(editing), autoCount: autoCountFor(editing) },
+        scopeMeta: scopeMeta(), autoTakenBy: autoTakenBy(editing), autoCount: autoCountFor(editing),
+        keyboxStatus: keyboxStatusFor(editing) },
       editorActions);
   }
 

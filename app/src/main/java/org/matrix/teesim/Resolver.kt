@@ -120,7 +120,11 @@ object Resolver {
         val o = JSONObject()
         o.put("id", p.id)
 
-        val keyboxBytes = File(Const.DATA_DIR, p.keybox).readBytes()
+        // Never changes the "profiles[]" wire shape control.cpp parses: the active/fallback
+        // choice is recorded on the side (ActiveKeybox) for the WebUI's /status, not in this
+        // message, so the interceptor's protocol is untouched by this feature.
+        val activeKeybox = resolveKeybox(p)
+        val keyboxBytes = File(Const.DATA_DIR, activeKeybox).readBytes()
         o.put("keyboxB64", b64.encodeToString(keyboxBytes))
 
         // Operation mode: "patch" re-signs the real hardware attestation, "generation" mints the
@@ -204,5 +208,71 @@ object Resolver {
     private fun putId(o: JSONObject, key: String, override: String, harvested: String) {
         val v = override.ifBlank { harvested }
         if (v.isNotBlank()) o.put(key, v)
+    }
+
+    /**
+     * Which keybox file [p] actually signs with: [p.keybox] when it is readable and
+     * [KeyboxInspector] calls it healthy (a Google-rooted, unbroken, unrevoked chain); its
+     * [ProfileConfig.keyboxFallback] when the primary fails that check AND the fallback itself
+     * passes it; the primary again otherwise (nothing healthy to prefer, so stick with what the
+     * user actually configured and let the real read failure surface normally, the same crash this
+     * threw before fallback existed). Records the choice in [ActiveKeybox] for the WebUI; never
+     * returns a name whose file doesn't exist when at least one of the two does.
+     */
+    private fun resolveKeybox(p: ConfigStore.ProfileConfig): String {
+        val primaryHealthy = KeyboxInspector.isHealthy(p.keybox)
+        if (primaryHealthy || p.keyboxFallback.isBlank()) {
+            ActiveKeybox.record(p.id, p.keybox, usingFallback = false, primaryHealthy = primaryHealthy)
+            return p.keybox
+        }
+        val fallbackHealthy = KeyboxInspector.isHealthy(p.keyboxFallback)
+        return if (fallbackHealthy) {
+            SystemLogger.warning(
+                "Resolver: profile '${p.id}' keybox '${p.keybox}' is unhealthy; " +
+                    "switching to fallback '${p.keyboxFallback}'"
+            )
+            ActiveKeybox.record(p.id, p.keyboxFallback, usingFallback = true, primaryHealthy = false)
+            p.keyboxFallback
+        } else {
+            // Neither is healthy: stay on the primary rather than hand the real hardware a
+            // SECOND bad keybox, and let File.readBytes() throw its usual "missing file" error
+            // if that's actually what's wrong -- a parse/revocation failure is not that, and the
+            // existing behavior (sign with it anyway) is unchanged for that case.
+            ActiveKeybox.record(p.id, p.keybox, usingFallback = false, primaryHealthy = false)
+            p.keybox
+        }
+    }
+}
+
+/**
+ * The keybox each profile is ACTUALLY signing with right now, published by [Resolver] on every
+ * resolve and read by [KeyAdmin]'s `/status` so the WebUI can show "using fallback" without
+ * re-running the health check itself. A plain synchronized map: written once per push from the
+ * daemon's single config thread, read far more often from HTTP handler threads.
+ */
+object ActiveKeybox {
+    data class State(val keybox: String, val usingFallback: Boolean, val primaryHealthy: Boolean)
+
+    private val state = java.util.Collections.synchronizedMap(LinkedHashMap<String, State>())
+
+    fun record(profileId: String, keybox: String, usingFallback: Boolean, primaryHealthy: Boolean) {
+        state[profileId] = State(keybox, usingFallback, primaryHealthy)
+    }
+
+    /** Snapshot as `{ profileId: { keybox, usingFallback, primaryHealthy } }`, for `/status`. */
+    fun toJson(): JSONObject {
+        val o = JSONObject()
+        synchronized(state) {
+            for ((id, s) in state) {
+                o.put(
+                    id,
+                    JSONObject()
+                        .put("keybox", s.keybox)
+                        .put("usingFallback", s.usingFallback)
+                        .put("primaryHealthy", s.primaryHealthy),
+                )
+            }
+        }
+        return o
     }
 }

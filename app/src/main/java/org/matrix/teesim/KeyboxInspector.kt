@@ -68,6 +68,37 @@ object KeyboxInspector {
     }
 
     /**
+     * Whether [name] is a keybox [Resolver] can safely sign with: the file exists, parses, holds
+     * at least one `<Key>` block, and EVERY key in it chains to a Google root with no broken
+     * signature link and no revoked serial. One bad key (an expired test chain some keyboxes ship
+     * alongside the real one, say) is enough to call the whole file unhealthy — a profile's
+     * fallback should not gamble on which key the daemon happens to need.
+     *
+     * Never throws: any failure to read or parse the file reads as "not healthy", the same as a
+     * missing file, so a caller never has to special-case an exception here.
+     */
+    fun isHealthy(name: String): Boolean =
+        try {
+            val r = inspect(name)
+            if (!r.optBoolean("ok", false)) {
+                false
+            } else {
+                val keys = r.optJSONArray("keys")
+                keys != null &&
+                    keys.length() > 0 &&
+                    (0 until keys.length()).all { i ->
+                        val k = keys.getJSONObject(i)
+                        k.optBoolean("chainVerified", false) &&
+                            !k.optBoolean("revoked", false) &&
+                            k.optBoolean("googleSigned", false)
+                    }
+            }
+        } catch (e: Exception) {
+            SystemLogger.warning("KeyboxInspector.isHealthy: treating $name as unhealthy", e)
+            false
+        }
+
+    /**
      * Canonical subject-DN -> keybox filename, across every `*.xml` keybox in the module dir. Used
      * to attribute a stored attestation key to the keybox that signed it: the key's leaf
      * certificate is issued by the keybox's signing (batch) cert, whose subject appears here, and

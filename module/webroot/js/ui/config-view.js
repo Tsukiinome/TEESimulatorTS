@@ -74,7 +74,7 @@ export function renderProfileList(mount, state, actions) {
   clear(mount);
   // autoCounts: Map(profile name -> how many apps the daemon auto-includes for it), from its
   // resolved snapshot. Empty when /scope is unavailable, in which case the rows read as before.
-  const { config, errors = [], dirty = false, autoCounts = new Map() } = state;
+  const { config, errors = [], dirty = false, autoCounts = new Map(), keyboxStatus = null } = state;
   const names = Object.keys(config.profiles);
 
   const global = errors.filter((e) => e.profile == null).map((e) => e.msg);
@@ -107,8 +107,15 @@ export function renderProfileList(mount, state, actions) {
     // The "N apps" chip counts apps[] only, which under-reports an auto-including profile; the
     // auto chip is the rest of the truth, and this is the resting screen where that lie was loudest.
     const autoN = autoCounts.get(name) || 0;
+    // What the daemon is ACTUALLY signing with, from its last resolve -- not the config's
+    // keybox field, so a profile whose primary just got revoked shows it here even if the
+    // saved config still just names the (now-unhealthy) primary.
+    const ks = keyboxStatus && keyboxStatus[name];
     const chips = el("span", { class: "chips" }, [
       el("span", { class: "chip", text: getPath(profile, ["keybox"]) || "no keybox" }),
+      ks && ks.usingFallback ? el("span", { class: "chip warn", text: "using backup keybox" }) : null,
+      ks && !ks.usingFallback && ks.primaryHealthy === false
+        ? el("span", { class: "chip warn", text: "keybox unhealthy" }) : null,
       el("span", { class: "chip", text: appCount + (appCount === 1 ? " app" : " apps") }),
       autoN ? el("span", { class: "chip", text: autoN + " auto" }) : null,
       errorCount.get(name) ? el("span", { class: "chip warn", text: errorCount.get(name) + " to fix" }) : null,
@@ -141,7 +148,7 @@ export function renderProfileEditor(host, state, actions) {
   const scrollTop = captureScroll(host);
   clear(host);
 
-  const { config, name, errors = [], keyboxFiles = [], openGroups = {}, resolved = {}, scopeMeta = null, autoTakenBy = null, autoCount = 0 } = state;
+  const { config, name, errors = [], keyboxFiles = [], openGroups = {}, resolved = {}, scopeMeta = null, autoTakenBy = null, autoCount = 0, keyboxStatus = null } = state;
   const profile = config.profiles[name];
   if (!profile) { actions.onClose(); return; }
 
@@ -223,6 +230,22 @@ export function renderProfileEditor(host, state, actions) {
     const fieldEl = renderField(d, value, onChange, ctx);
     const hint = resolveHint(d, value, resolved);
     if (hint) fieldEl.appendChild(hint);
+    // What the daemon is actually signing with right now, straight from its last resolve --
+    // shown under the primary field since that's where "it switched to the backup" or "neither
+    // is healthy" needs to be seen, regardless of what the saved config still says.
+    if (d.key === "keybox" && keyboxStatus) {
+      if (keyboxStatus.usingFallback) {
+        fieldEl.appendChild(el("div", {
+          class: "field-help resolve-hint missing",
+          text: "This keybox is unhealthy — currently signing with the backup keybox (" + keyboxStatus.keybox + ") instead.",
+        }));
+      } else if (keyboxStatus.primaryHealthy === false) {
+        fieldEl.appendChild(el("div", {
+          class: "field-help resolve-hint missing",
+          text: "This keybox is unhealthy and no (healthy) backup is set — still signing with it anyway.",
+        }));
+      }
+    }
     for (const m of errFor(d.key)) fieldEl.appendChild(el("div", { class: "err", text: m }));
     return fieldEl;
   };

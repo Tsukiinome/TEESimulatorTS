@@ -133,15 +133,24 @@ function keyboxWidget(d, value, onChange, ctx) {
   // a keybox we can't see right now still shows (flagged) rather than vanishing.
   const files = (ctx.keyboxFiles || []).slice();
   if (value && !files.includes(value)) files.push(value);
-  if (files.length === 0) {
+  if (files.length === 0 && d.required) {
     return el("select", { id: ctx.id, class: "input", disabled: true },
       [el("option", { text: "no keybox files found" })]);
+  }
+  // Optional (e.g. the backup keybox): an explicit blank option, so "none" is something the
+  // user can actually pick, rather than the browser just defaulting the <select> to the first
+  // file while the stored value silently stays "".
+  const options = d.required ? [] : [el("option", { value: "", selected: value === "", text: "(none)" })];
+  for (const f of files) {
+    options.push(el("option", {
+      value: f, selected: f === value,
+      text: f + ((ctx.keyboxFiles || []).includes(f) ? "" : " (missing)"),
+    }));
   }
   return el("select", {
     id: ctx.id, class: "input",
     onchange: (e) => onChange(d.path, e.target.value),
-  }, files.map((f) =>
-    el("option", { value: f, selected: f === value, text: f + ((ctx.keyboxFiles || []).includes(f) ? "" : " (missing)") })));
+  }, options);
 }
 
 function applistWidget(d, value, ctx) {

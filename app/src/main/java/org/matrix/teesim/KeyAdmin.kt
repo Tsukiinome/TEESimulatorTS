@@ -501,6 +501,10 @@ object KeyAdmin {
             "lib",
             JSONObject().put("hook", Control.libHook ?: JSONObject.NULL).put("api", Control.libApi),
         )
+        // Which keybox each profile is actually signing with right now -- lets the WebUI show
+        // "using fallback" without re-running the health check client-side. Empty until the first
+        // successful resolve.
+        o.put("activeKeyboxes", ActiveKeybox.toJson())
         return o
     }
 

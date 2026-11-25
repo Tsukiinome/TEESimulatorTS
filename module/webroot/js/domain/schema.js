@@ -81,6 +81,12 @@ export const FIELDS = [
     help: "An *.xml keybox under /data/adb/teesim to sign attestations with.",
   },
   {
+    key: "keyboxFallback", path: ["keyboxFallback"], label: "Backup keybox", group: "attestation",
+    type: "keybox", re: KEYBOX_RE, required: false, default: "",
+    help: "Used automatically if the keybox above turns out broken or revoked (checked on every " +
+      "config push). Leave unset for no fallback.",
+  },
+  {
     key: "mode", path: ["mode"], label: "Operation mode", group: "attestation",
     type: "select", options: ["patch", "generation"], required: true, default: "patch",
     re: MODE_RE,
