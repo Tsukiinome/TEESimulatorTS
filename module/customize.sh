@@ -41,6 +41,46 @@ if [ ! -f /data/adb/teesim/config.json ]; then
         mv /data/adb/teesim/config.json.new /data/adb/teesim/config.json
     fi
   fi
+
+  # Carry over the GLOBAL patch-level override from a TrickyStore security_patch.txt, if it set
+  # one: the lines before its first "[package]" section (a per-package override has no profile to
+  # land in here, so those are dropped -- same scope limit as the app-list migration above).
+  # Mirrors Config.kt's own precedence (system/vendor/boot each fall back to "all", or to the bare
+  # single-line form meaning all three), but only ever writes values that already look like a date:
+  # anything else is left blank, which this module reads as "no override, use the real device value"
+  # -- the same thing an unset field means in TrickyStore, so a weird line never turns into a
+  # surprise override instead of silently doing nothing.
+  TS_PATCH=/data/adb/tricky_store/security_patch.txt
+  if [ -f "$TS_PATCH" ]; then
+    global=$(tr -d '\r' < "$TS_PATCH" | awk '
+      /^\[/ { exit }
+      { sub(/#.*/, ""); gsub(/^[ \t]+|[ \t]+$/, ""); if (length($0)) print }
+    ')
+    if [ -n "$global" ]; then
+      lines=$(printf '%s\n' "$global" | wc -l)
+      eqs=$(printf '%s\n' "$global" | grep -c '=')
+      if [ "$lines" -eq 1 ] && [ "$eqs" -eq 0 ]; then
+        p_all=$global
+      else
+        p_all=$(printf '%s\n' "$global" | awk -F= 'tolower($1)=="all"{sub(/^[^=]*=/,"");print;exit}')
+        p_system=$(printf '%s\n' "$global" | awk -F= 'tolower($1)=="system"{sub(/^[^=]*=/,"");print;exit}')
+        p_vendor=$(printf '%s\n' "$global" | awk -F= 'tolower($1)=="vendor"{sub(/^[^=]*=/,"");print;exit}')
+        p_boot=$(printf '%s\n' "$global" | awk -F= 'tolower($1)=="boot"{sub(/^[^=]*=/,"");print;exit}')
+      fi
+      p_system=${p_system:-$p_all}
+      p_vendor=${p_vendor:-$p_all}
+      p_boot=${p_boot:-$p_all}
+      DATE_RE='^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$'
+      echo "$p_system" | grep -qE "$DATE_RE" || p_system=""
+      echo "$p_vendor" | grep -qE "$DATE_RE" || p_vendor=""
+      echo "$p_boot" | grep -qE "$DATE_RE" || p_boot=""
+      if [ -n "$p_system$p_vendor$p_boot" ]; then
+        ui_print "- Adopting the patch levels from TrickyStore's security_patch.txt"
+        sed -i "s#\"patchLevel\":.*#\"patchLevel\": { \"system\": \"$p_system\", \"vendor\": \"$p_vendor\", \"boot\": \"$p_boot\" },#" \
+          /data/adb/teesim/config.json
+      fi
+    fi
+  fi
 fi
 
 # Ship only the ABI this device runs; the other ABI's native libraries are dead weight here.
