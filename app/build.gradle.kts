@@ -36,7 +36,7 @@ abstract class GitExecutor @Inject constructor(private val execOperations: ExecO
 val gitExecutor = objects.newInstance(GitExecutor::class.java)
 val gitCommitCount = gitExecutor.execute("git rev-list HEAD --count", rootDir).toInt()
 val gitCommitHash = gitExecutor.execute("git rev-parse --verify --short HEAD", rootDir)
-val verName = "v4.0"
+val verName = "v4.0.1"
 
 android {
     namespace = "org.matrix.teesim"

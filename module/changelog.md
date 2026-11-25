@@ -1,32 +1,26 @@
-## 🎉 TEESimulator 4.0 — a new foundation
+## 🚀 TEESimulator 4.0.1 — this fork's first release
 
-Ever since TEESimulator began, the community has watched me pour real effort into closing
-pre-existing detection points, release after release. But as AI-driven conformance scanners multiply
-and quick "harness fix" commits go viral, it has grown exhausting to fold in a stream of unproven,
-poorly-explained external patches — innovation stalled, and code quality slipped noticeably. 😮‍💨
+This is [@Tsukiinome](https://github.com/Tsukiinome)'s maintained fork of
+[JingMatrix/TEESimulator](https://github.com/JingMatrix/TEESimulator): same in-process reference
+KeyMint TA, same profiles-and-WebUI design, with a few additions aimed squarely at people coming
+from TrickyStore.
 
-So here is **TEESimulator 4.0**. 🚀 Instead of faking a hardware backend, it runs AOSP's own KeyMint
-reference implementation — the very trusted application that normally lives *inside* the TEE —
-**in-process**. This single change sweeps away countless detection points at once and, for the first
-time, brings first-class permanent key storage. 🔐
+## ✨ What's new since upstream v4.0
 
-## ✨ Highlights
-
-- **🧠 Reference KeyMint TA, in-process.** Attestations come straight from AOSP's `kmr-ta`, not
-  hand-rolled certificates — so every emitted record matches a real device field-for-field.
-- **🎛️ Profiles and a WebUI.** Bundle a keybox, operation mode, patch/OS levels, and device identity
-  into a named profile, assign it to your apps, and edit it all from the manager's WebUI — no text
-  editor, no reboot.
-- **📱 Android 10 → 17.** Both the legacy `keystore` daemon (Android 10/11) and `keystore2` / KeyMint
-  (Android 12+) are intercepted, and every key is attested at — and reports — its real security level
-  and the version its OS release uses.
-- **🩹 Patch mode by default.** The real hardware still generates the key; only its attestation is
-  re-signed under your keybox, keeping the genuine hardware-backed blob and its true contents.
+- **🔁 Automatic backup keybox.** Give a profile a second keybox. Every config push, the daemon
+  runs the same health check the WebUI's inspector does (parses, chains to a Google root, not on
+  the revocation list) and silently switches to the backup if the primary ever fails it — a keybox
+  Google revokes degrades your profile instead of breaking it. The profile list and editor show
+  which one is actually in use.
+- **⚡ One-tap "load current" for patch levels.** A button next to each patch/OS field writes the
+  device's real, currently-harvested value straight into the field — no more typing a date by hand.
+- **📥 Deeper TrickyStore migration.** First install now adopts, from TrickyStore's own files under
+  `/data/adb/tricky_store`: the keybox, the app list (`target.txt`), and — new in this release —
+  the global patch-level override (`security_patch.txt`). Switching over should mean flipping a
+  module on, not re-entering everything by hand.
 
 ## 💬 Feedback
 
-To get started, drop a keybox at `/data/adb/teesim/keybox.xml`, then assign your apps to a profile in
-the WebUI. 🗝️
-
-Please open an issue for any device-support or compatibility problems — it helps enormously. 🙏 This
-release has been tested on **Android 17 (Pixel 6)** and **Android 10 (the Android emulator)**.
+Please open issues on this fork's repository. Upstream's own highlights (reference KeyMint TA,
+profiles, Android 10–17 support, patch mode by default) all still apply unchanged — see
+[JingMatrix/TEESimulator](https://github.com/JingMatrix/TEESimulator) for the full story of 4.0.

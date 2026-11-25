@@ -1,6 +1,6 @@
 {
-	"version": "v4.0",
-	"versionCode": 34,
-	"zipUrl": "https://github.com/JingMatrix/TEESimulator/releases/download/v4.0/TEESimulator-v4.0-34-Release.zip",
-	"changelog": "https://raw.githubusercontent.com/JingMatrix/TEESimulator/dev/module/changelog.md"
+	"version": "v4.0.1",
+	"versionCode": 81,
+	"zipUrl": "https://github.com/Tsukiinome/TEESimulatorTS/releases/download/v4.0.1/TEESimulator-v4.0.1-81-Release.zip",
+	"changelog": "https://raw.githubusercontent.com/Tsukiinome/TEESimulatorTS/dev/module/changelog.md"
 }
