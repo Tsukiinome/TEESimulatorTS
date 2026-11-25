@@ -24,6 +24,23 @@ if [ ! -f /data/adb/teesim/keybox.xml ] && [ -f /data/adb/tricky_store/keybox.xm
 fi
 if [ ! -f /data/adb/teesim/config.json ]; then
   cp "$MODPATH/config.default.json" /data/adb/teesim/config.json
+  # Carry over the app list from a TrickyStore target.txt. Only plain package names are kept: the
+  # per-app "!" / "?" mode suffixes have no per-app equivalent here (the mode is set per profile).
+  TS_TARGET=/data/adb/tricky_store/target.txt
+  if [ -f "$TS_TARGET" ]; then
+    apps=$(tr -d '\r' < "$TS_TARGET" | sed 's/#.*$//; s/[[:space:]]//g; s/[!?]$//' |
+      grep -E '^[A-Za-z0-9_.]+$' | sort -u |
+      awk 'NF { printf "%s        \"%s\"", (n++ ? ",\n" : ""), $0 } END { print "" }')
+    if [ -n "$apps" ]; then
+      ui_print "- Adopting the app list from TrickyStore's target.txt"
+      awk -v apps="$apps" '
+        /"apps": \[/ { print; print apps; skip = 1; next }
+        skip && /\]/ { skip = 0 }
+        !skip { print }
+      ' /data/adb/teesim/config.json > /data/adb/teesim/config.json.new &&
+        mv /data/adb/teesim/config.json.new /data/adb/teesim/config.json
+    fi
+  fi
 fi
 
 # Ship only the ABI this device runs; the other ABI's native libraries are dead weight here.
