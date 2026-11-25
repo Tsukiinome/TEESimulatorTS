@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">TEESimulator-RS</h1>
+  <h1 align="center">TEESimulatorTS</h1>
   <p align="center"><b>Pass hardware security checks on a rooted Android phone</b></p>
   <p align="center">
     <a href="https://github.com/Enginex0/TEESimulator-RS/actions/workflows/build.yml"><img src="https://github.com/Enginex0/TEESimulator-RS/actions/workflows/build.yml/badge.svg" alt="Build"></a>
