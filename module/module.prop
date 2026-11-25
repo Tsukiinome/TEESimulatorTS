@@ -1,5 +1,5 @@
 id=tricky_store
-name=TEESimulator-RS
+name=TEESimulatorTS
 version=${REPLACEMEVER}
 versionCode=${REPLACEMEVERCODE}
 author=Tsukiinome
