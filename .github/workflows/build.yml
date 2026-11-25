@@ -80,15 +80,15 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: TEESimulator-RS-release-zip
-          path: out/TEESimulator-RS-*-Release.zip
+          name: TEESimulatorTS-release-zip
+          path: out/TEESimulatorTS-*-Release.zip
           retention-days: 30
           compression-level: 0
 
       - uses: actions/upload-artifact@v4
         with:
-          name: TEESimulator-RS-debug-zip
-          path: out/TEESimulator-RS-*-Debug.zip
+          name: TEESimulatorTS-debug-zip
+          path: out/TEESimulatorTS-*-Debug.zip
           retention-days: 7
           compression-level: 0
 
@@ -119,18 +119,18 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: TEESimulator-RS-release-zip
+          name: TEESimulatorTS-release-zip
           path: zips
 
       - uses: actions/download-artifact@v4
         with:
-          name: TEESimulator-RS-debug-zip
+          name: TEESimulatorTS-debug-zip
           path: zips
 
       - name: Extract changelog
         run: |
           ver="${VER#v}"
-          awk "/^## TEESimulator-RS v${ver%%-*}/{flag=1; next} /^## TEESimulator-RS v/{if(flag) exit} flag" module/changelog.md > /tmp/notes.md
+          awk "/^## TEESimulatorTS v${ver%%-*}/{flag=1; next} /^## TEESimulatorTS v/{if(flag) exit} flag" module/changelog.md > /tmp/notes.md
           cat /tmp/notes.md
         env:
           VER: ${{ steps.ver.outputs.version }}
