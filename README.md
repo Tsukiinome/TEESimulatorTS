@@ -1,5 +1,19 @@
 # TEESimulator
 
+> **This is [@Tsukiinome](https://github.com/Tsukiinome)'s fork** of
+> [JingMatrix/TEESimulator](https://github.com/JingMatrix/TEESimulator). Everything below describes
+> upstream's design and still applies as-is; this fork adds a few things on top, aimed at people
+> switching over from TrickyStore:
+>
+> - **Automatic backup keybox** — a profile can name a second keybox that the daemon switches to,
+>   on its own, if the primary ever fails its health check (parses, chains to a Google root, not
+>   revoked). See [Fallback keybox](#fallback-keybox).
+> - **One-tap "load current"** for the patch/OS fields in the WebUI, reading the device's real
+>   harvested value straight into the field.
+> - **Deeper TrickyStore migration** on first install — see [Installation](#installation).
+>
+> See [`module/changelog.md`](module/changelog.md) for this release's notes.
+
 *TEESimulator* defeats hardware-backed [Key Attestation](https://developer.android.com/privacy-and-security/security-key-attestation) by serving selected apps from a software KeyMint that runs *inside* the real keystore daemon, while every other key stays on the device's real hardware.
 
 Rather than patch certificates after the fact, it embeds AOSP's own reference KeyMint trusted application ([`kmr-ta`](https://cs.android.com/android/platform/superproject/main/+/main:system/keymint/)) and signs attestations with a user-provided keybox. The certificates are generated the same way a real TEE generates them, so they are internally consistent by construction.
@@ -36,6 +50,13 @@ The root of trust — verified-boot key, verified-boot state, device-locked flag
 
 The module ships a default `config.json` that targets Google Play services and the Play Store. The keybox is private and is never shipped with the module, so until one is placed the interceptor does nothing.
 
+**Coming from TrickyStore:** on first install, if `/data/adb/tricky_store/` already has them, the
+module adopts its `keybox.xml`, the app list from `target.txt` (plain package names only — the
+`!`/`?` per-app mode suffixes have no equivalent here), and the global patch-level override from
+`security_patch.txt` (per-package overrides are dropped; this module has no per-app patch field to
+put them in). TrickyStore itself is disabled automatically, since both hook the same keystore path.
+Existing `/data/adb/teesim/` files are never overwritten.
+
 Killing the keystore daemon (`su -c 'kill $(pidof keystore2)'` on Android 12+, `keystore` on 10/11) is the recovery path: a fresh daemon starts clean, with no interception, until the module re-injects it.
 
 ## Configuration
@@ -52,6 +73,7 @@ A schema version and a map of named profiles. Each targeted package must appear 
   "profiles": {
     "default": {
       "keybox": "keybox.xml",                // relative to /data/adb/teesim; must parse (rsa + ecdsa, chains >= 2)
+      "keyboxFallback": "",                   // optional; used automatically if the keybox above fails its health check
       "patchLevel": { "system": "today", "vendor": "YYYY-MM-05", "boot": "YYYY-MM-05" },
       "osVersion": "",                       // empty = harvested | system_property | "16" | "16.0.0" | 160000
       "brand": "", "device": "", "product": "",
@@ -91,6 +113,19 @@ A keybox carries the private keys and certificate chains the simulator signs wit
 ```
 
 A profile names its keybox by relative path, so several profiles can sign with different keyboxes. An app that is in no profile is transparent to the module — its keys go straight to the real hardware.
+
+### Fallback keybox
+
+A profile's `keyboxFallback` names a second keybox, checked only when the primary one fails: on
+every config push the daemon parses it, verifies the certificate chain links up to a Google root,
+and checks every serial against Google's revocation list — the same check the WebUI's keybox
+inspector runs. If the primary fails that check and the fallback passes it, the daemon signs with
+the fallback instead, and keeps using it until the primary is healthy again. If neither is healthy
+it stays on the primary and surfaces the real error, same as before this existed.
+
+The profile list and editor show which one is actually in use (`/status`'s `activeKeyboxes`),
+so a quietly-revoked primary doesn't go unnoticed. This does not fetch or rotate keyboxes from
+anywhere — both keybox files are ones you import yourself, same as the primary.
 
 ### WebUI
 
