@@ -1,23 +1,27 @@
-## 🏷️ TEESimulatorTS 5.0.1
+## 🚀 TEESimulatorTS 5.1
 
-Renames the module itself — and the zip it ships as — from `TEESimulator` to `TEESimulatorTS`, to
-match this fork's repository name: it now shows as **TEESimulatorTS** in KernelSU/Magisk's module
-list, and future release/canary zips read `TEESimulatorTS-...` instead of `TEESimulator-...`. Pure
-naming change, no behavior difference from 5.0.
+## ✨ What's new
 
-## ✨ Still on top of upstream v4.0 (first added in 5.0)
+- **⏳ Early keybox-expiry warning.** A profile's keybox (or backup) now shows a "expires in N
+  days" chip on the profile list — and in the editor, under whichever field it is — starting 14
+  days before its certificate actually expires. Previously the only way to notice was opening the
+  keybox inspector by hand; now it's visible on an ordinary visit to the WebUI, well before the
+  fallback switch (or an outright attestation failure) would otherwise be your first sign.
+- **🔁 Automatic backup keybox now also triggers on expiry, not just revocation.** The health
+  check the fallback feature relies on previously only failed a keybox for a broken chain, an
+  untrusted root, or a revoked serial — an *expired* certificate slipped through as "healthy" and
+  kept signing with it. It's now treated exactly like a revoked one, so expiry alone is enough to
+  fall over to a healthy backup (or to show "keybox unhealthy" with none set).
+- **🐛 Fixed:** the "using backup keybox" / "keybox unhealthy" chips and hints never actually
+  appeared — the daemon's `/status` response carried the data correctly, but the WebUI's status
+  reader silently dropped the field before it reached the profile list or editor. Both now show up
+  as originally intended.
 
-- **🔁 Automatic backup keybox.** Give a profile a second keybox. Every config push, the daemon
-  runs the same health check the WebUI's inspector does (parses, chains to a Google root, not on
-  the revocation list) and silently switches to the backup if the primary ever fails it — a keybox
-  Google revokes degrades your profile instead of breaking it. The profile list and editor show
-  which one is actually in use.
-- **⚡ One-tap "load current" for patch levels.** A button next to each patch/OS field writes the
-  device's real, currently-harvested value straight into the field — no more typing a date by hand.
-- **📥 Deeper TrickyStore migration.** First install now adopts, from TrickyStore's own files under
-  `/data/adb/tricky_store`: the keybox, the app list (`target.txt`), and the global patch-level
-  override (`security_patch.txt`). Switching over should mean flipping a module on, not
-  re-entering everything by hand.
+## 📦 Also still here (5.0 / 5.0.1)
+
+- Automatic backup keybox, one-tap "load current" for patch levels, deeper TrickyStore migration
+  on first install, and the `TEESimulatorTS` naming/packaging from 5.0.1 — see this fork's
+  repository for the full history.
 
 ## 💬 Feedback
 

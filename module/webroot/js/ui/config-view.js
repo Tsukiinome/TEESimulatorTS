@@ -33,6 +33,44 @@ const GROUPS = [
 const fieldId = (profile, key) => `f__${profile}__${key}`;
 const renameId = (profile) => `rn__${profile}`;
 
+// A keybox within this many days of its certificate expiry gets a warning chip/hint, well
+// before KeyboxInspector.isHealthy actually calls it unhealthy — so a profile's keybox
+// (or backup) going stale is visible on an ordinary visit, not just after it already failed.
+const EXPIRY_WARN_DAYS = 14;
+
+// Days left until `notAfter` (epoch millis), or null when there's nothing to say: no keybox
+// name, no entry for it in `keyboxExpiry` (daemon too old / never resolved), or the file
+// itself not parsing to a date. Negative means already expired.
+function daysToExpiry(name, keyboxExpiry) {
+  if (!name || !keyboxExpiry || !Object.prototype.hasOwnProperty.call(keyboxExpiry, name)) return null;
+  const notAfter = keyboxExpiry[name];
+  if (notAfter == null) return null;
+  return Math.ceil((notAfter - Date.now()) / 86400000);
+}
+
+// The list row's compact chip: only shown once a keybox is actually expired or inside the
+// warning window — silent otherwise, so a healthy-for-years keybox adds no visual noise.
+function expiryChip(name, keyboxExpiry) {
+  const days = daysToExpiry(name, keyboxExpiry);
+  if (days == null) return null;
+  if (days < 0) return el("span", { class: "chip warn", text: "keybox expired" });
+  if (days <= EXPIRY_WARN_DAYS) {
+    return el("span", { class: "chip warn", text: "expires in " + days + (days === 1 ? " day" : " days") });
+  }
+  return null;
+}
+
+// The editor's longer-form hint under a keybox field, same threshold as the chip.
+function expiryHintText(name, keyboxExpiry) {
+  const days = daysToExpiry(name, keyboxExpiry);
+  if (days == null) return null;
+  if (days < 0) return "This keybox's certificate has expired.";
+  if (days <= EXPIRY_WARN_DAYS) {
+    return "This keybox's certificate expires in " + days + (days === 1 ? " day" : " days") + ".";
+  }
+  return null;
+}
+
 // A fold header: the section title, an optional "N set / optional" tag for the identity
 // group, and an error mark when any field inside has an error.
 function foldSummary(group, fields, profile, hasErrors) {
@@ -74,7 +112,7 @@ export function renderProfileList(mount, state, actions) {
   clear(mount);
   // autoCounts: Map(profile name -> how many apps the daemon auto-includes for it), from its
   // resolved snapshot. Empty when /scope is unavailable, in which case the rows read as before.
-  const { config, errors = [], dirty = false, autoCounts = new Map(), keyboxStatus = null } = state;
+  const { config, errors = [], dirty = false, autoCounts = new Map(), keyboxStatus = null, keyboxExpiry = null } = state;
   const names = Object.keys(config.profiles);
 
   const global = errors.filter((e) => e.profile == null).map((e) => e.msg);
@@ -111,11 +149,15 @@ export function renderProfileList(mount, state, actions) {
     // keybox field, so a profile whose primary just got revoked shows it here even if the
     // saved config still just names the (now-unhealthy) primary.
     const ks = keyboxStatus && keyboxStatus[name];
+    // The keybox actually signing right now (daemon's last resolve) when known, else the
+    // configured primary — so the expiry warning tracks whichever one is really in use.
+    const activeKeyboxName = (ks && ks.keybox) || getPath(profile, ["keybox"]);
     const chips = el("span", { class: "chips" }, [
       el("span", { class: "chip", text: getPath(profile, ["keybox"]) || "no keybox" }),
       ks && ks.usingFallback ? el("span", { class: "chip warn", text: "using backup keybox" }) : null,
       ks && !ks.usingFallback && ks.primaryHealthy === false
         ? el("span", { class: "chip warn", text: "keybox unhealthy" }) : null,
+      expiryChip(activeKeyboxName, keyboxExpiry),
       el("span", { class: "chip", text: appCount + (appCount === 1 ? " app" : " apps") }),
       autoN ? el("span", { class: "chip", text: autoN + " auto" }) : null,
       errorCount.get(name) ? el("span", { class: "chip warn", text: errorCount.get(name) + " to fix" }) : null,
@@ -148,7 +190,7 @@ export function renderProfileEditor(host, state, actions) {
   const scrollTop = captureScroll(host);
   clear(host);
 
-  const { config, name, errors = [], keyboxFiles = [], openGroups = {}, resolved = {}, scopeMeta = null, autoTakenBy = null, autoCount = 0, keyboxStatus = null } = state;
+  const { config, name, errors = [], keyboxFiles = [], openGroups = {}, resolved = {}, scopeMeta = null, autoTakenBy = null, autoCount = 0, keyboxStatus = null, keyboxExpiry = null } = state;
   const profile = config.profiles[name];
   if (!profile) { actions.onClose(); return; }
 
@@ -244,6 +286,15 @@ export function renderProfileEditor(host, state, actions) {
           class: "field-help resolve-hint missing",
           text: "This keybox is unhealthy and no (healthy) backup is set — still signing with it anyway.",
         }));
+      }
+    }
+    // Proactive expiry hint on whichever keybox field this is, regardless of which one is
+    // actually signing right now — so a fallback you're not currently using still warns you
+    // before IT expires too.
+    if (d.key === "keybox" || d.key === "keyboxFallback") {
+      const expiryText = expiryHintText(value, keyboxExpiry);
+      if (expiryText) {
+        fieldEl.appendChild(el("div", { class: "field-help resolve-hint missing", text: expiryText }));
       }
     }
     for (const m of errFor(d.key)) fieldEl.appendChild(el("div", { class: "err", text: m }));

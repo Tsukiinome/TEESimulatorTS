@@ -11,11 +11,11 @@
 import { keyAdmin } from "./keyadmin.js";
 
 // getStatus() -> {
-//   daemonRunning, reachable, hookActive, hook, api, harvest, error?
+//   daemonRunning, reachable, hookActive, hook, api, harvest, activeKeyboxes, keyboxExpiry, error?
 // }
 export async function getStatus() {
   try {
-    const res = await keyAdmin("status"); // { ok, harvest, lib:{ hook, api } }
+    const res = await keyAdmin("status"); // { ok, harvest, lib:{ hook, api }, activeKeyboxes, keyboxExpiry }
     const lib = (res && res.lib) || {};
     const hook = lib.hook || "unknown";
     return {
@@ -25,6 +25,12 @@ export async function getStatus() {
       api: lib.api || "",
       hookActive: !!(hook && hook !== "unknown"),
       harvest: (res && res.harvest) || null,
+      // { profileId: { keybox, usingFallback, primaryHealthy } }, straight from the daemon — see
+      // config-controller.js's keyboxStatusFor. Was silently dropped here before, so the "using
+      // backup keybox" / "keybox unhealthy" chips never actually showed up in the WebUI.
+      activeKeyboxes: (res && res.activeKeyboxes) || null,
+      // { filename: notAfterMillis | null }, one entry per keybox any profile currently names.
+      keyboxExpiry: (res && res.keyboxExpiry) || null,
     };
   } catch (e) {
     return {
@@ -34,6 +40,8 @@ export async function getStatus() {
       api: "",
       hookActive: false,
       harvest: null,
+      activeKeyboxes: null,
+      keyboxExpiry: null,
       error: e && e.message ? e.message : String(e),
     };
   }

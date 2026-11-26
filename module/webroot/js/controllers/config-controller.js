@@ -40,6 +40,7 @@ export function create(mount) {
   let openGroups = {};       // per-group disclosure state, { groupId: bool }
   let harvest = null;        // the daemon's harvest record, for the resolution hints
   let activeKeyboxes = null; // { profileId: { keybox, usingFallback, primaryHealthy } }, from /status
+  let keyboxExpiry = null;   // { filename: notAfterMillis | null }, from /status
 
   // Scope drill-in state (a second overlay opened ON TOP of the editor). Only one is open
   // at a time. `packagesCache` is the live device app list fetched lazily the first time the
@@ -176,6 +177,7 @@ export function create(mount) {
       const st = await getStatus();
       harvest = (st && st.harvest) || null;
       activeKeyboxes = (st && st.activeKeyboxes) || null;
+      keyboxExpiry = (st && st.keyboxExpiry) || null;
     } catch {
       /* keep whatever we had */
     }
@@ -213,7 +215,9 @@ export function create(mount) {
 
   function renderList() {
     renderProfileList(
-      mount, { config, errors, dirty, autoCounts: autoCounts(), keyboxStatus: activeKeyboxes }, listActions);
+      mount,
+      { config, errors, dirty, autoCounts: autoCounts(), keyboxStatus: activeKeyboxes, keyboxExpiry },
+      listActions);
   }
 
   // Which OTHER profile (if any) already owns auto-include, relative to `name`. Only one profile
@@ -232,7 +236,7 @@ export function create(mount) {
       editorHost,
       { config, name: editing, errors, keyboxFiles, openGroups, resolved: resolvedLevels(),
         scopeMeta: scopeMeta(), autoTakenBy: autoTakenBy(editing), autoCount: autoCountFor(editing),
-        keyboxStatus: keyboxStatusFor(editing) },
+        keyboxStatus: keyboxStatusFor(editing), keyboxExpiry },
       editorActions);
   }
 

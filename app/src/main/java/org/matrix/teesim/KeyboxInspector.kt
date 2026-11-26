@@ -70,9 +70,13 @@ object KeyboxInspector {
     /**
      * Whether [name] is a keybox [Resolver] can safely sign with: the file exists, parses, holds
      * at least one `<Key>` block, and EVERY key in it chains to a Google root with no broken
-     * signature link and no revoked serial. One bad key (an expired test chain some keyboxes ship
-     * alongside the real one, say) is enough to call the whole file unhealthy — a profile's
-     * fallback should not gamble on which key the daemon happens to need.
+     * signature link, no revoked serial, and no expired certificate. One bad key (an expired test
+     * chain some keyboxes ship alongside the real one, say) is enough to call the whole file
+     * unhealthy — a profile's fallback should not gamble on which key the daemon happens to need.
+     *
+     * Expiry is checked here (not just revocation) because a keybox with a past `notAfter` is
+     * rejected by real relying parties exactly like a revoked one — it should not be left for the
+     * fallback-keybox feature to silently keep signing with until it happens to also get revoked.
      *
      * Never throws: any failure to read or parse the file reads as "not healthy", the same as a
      * missing file, so a caller never has to special-case an exception here.
@@ -90,12 +94,42 @@ object KeyboxInspector {
                         val k = keys.getJSONObject(i)
                         k.optBoolean("chainVerified", false) &&
                             !k.optBoolean("revoked", false) &&
+                            !k.optBoolean("expired", false) &&
                             k.optBoolean("googleSigned", false)
                     }
             }
         } catch (e: Exception) {
             SystemLogger.warning("KeyboxInspector.isHealthy: treating $name as unhealthy", e)
             false
+        }
+
+    /**
+     * Earliest certificate expiry (`notAfter`, epoch millis) across every key in [name], or null
+     * if the file can't be read/parsed or carries no certificates at all. Used for a proactive
+     * "expires soon" warning in the WebUI, well before the keybox actually fails [isHealthy] and
+     * the profile falls over to its backup (or starts failing attestation with no fallback set).
+     */
+    fun earliestExpiry(name: String): Long? =
+        try {
+            val r = inspect(name)
+            if (!r.optBoolean("ok", false)) {
+                null
+            } else {
+                val keys = r.optJSONArray("keys")
+                var min: Long? = null
+                if (keys != null) {
+                    for (i in 0 until keys.length()) {
+                        val k = keys.getJSONObject(i)
+                        if (!k.has("earliestExpiry")) continue
+                        val v = k.optLong("earliestExpiry")
+                        if (min == null || v < min!!) min = v
+                    }
+                }
+                min
+            }
+        } catch (e: Exception) {
+            SystemLogger.warning("KeyboxInspector.earliestExpiry: could not read $name", e)
+            null
         }
 
     /**
@@ -188,6 +222,8 @@ object KeyboxInspector {
         val revChecked = RevocationList.available()
         val certs = JSONArray()
         var anyRevoked = false
+        var anyExpired = false
+        var earliestNotAfter = Long.MAX_VALUE
         var chainVerified = valid.isNotEmpty() && valid.size == parsed.size
         for (i in parsed.indices) {
             val cert = parsed[i]
@@ -197,6 +233,8 @@ object KeyboxInspector {
                 continue
             }
             val j = certJson(i, cert)
+            if (cert.notAfter.time < earliestNotAfter) earliestNotAfter = cert.notAfter.time
+            if (j.optBoolean("expired", false)) anyExpired = true
 
             // Cryptographic linkage: every cert is signed by the next one up; a self-signed root
             // signs itself. When the top cert is not self-signed the real root is not embedded (the
@@ -249,6 +287,8 @@ object KeyboxInspector {
         out.put("chainVerified", chainVerified)
         out.put("revoked", anyRevoked)
         out.put("revocationChecked", revChecked)
+        out.put("expired", anyExpired)
+        if (earliestNotAfter != Long.MAX_VALUE) out.put("earliestExpiry", earliestNotAfter)
         return out
     }
 

@@ -1,6 +1,6 @@
 {
-	"version": "v5.0.1",
-	"versionCode": 86,
-	"zipUrl": "https://github.com/Tsukiinome/TEESimulatorTS/releases/download/v5.0.1/TEESimulatorTS-v5.0.1-86-Release.zip",
+	"version": "v5.1",
+	"versionCode": 87,
+	"zipUrl": "https://github.com/Tsukiinome/TEESimulatorTS/releases/download/v5.1/TEESimulatorTS-v5.1-87-Release.zip",
 	"changelog": "https://raw.githubusercontent.com/Tsukiinome/TEESimulatorTS/dev/module/changelog.md"
 }

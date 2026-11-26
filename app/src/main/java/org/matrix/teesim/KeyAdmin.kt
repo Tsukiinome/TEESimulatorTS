@@ -505,7 +505,33 @@ object KeyAdmin {
         // "using fallback" without re-running the health check client-side. Empty until the first
         // successful resolve.
         o.put("activeKeyboxes", ActiveKeybox.toJson())
+        o.put("keyboxExpiry", keyboxExpiryJson())
         return o
+    }
+
+    /**
+     * Earliest cert expiry (epoch millis, or JSON null) for every keybox file any profile
+     * currently names as its primary or fallback, keyed by filename — lets the WebUI warn before
+     * a keybox actually fails [KeyboxInspector.isHealthy], not just after. Each file is inspected
+     * once even when several profiles share it. Best effort: a config that fails to load reports
+     * an empty map rather than failing the whole /status call.
+     */
+    private fun keyboxExpiryJson(): JSONObject {
+        val out = JSONObject()
+        val names = LinkedHashSet<String>()
+        try {
+            for (p in ConfigStore.load().profiles) {
+                if (p.keybox.isNotBlank()) names.add(p.keybox)
+                if (p.keyboxFallback.isNotBlank()) names.add(p.keyboxFallback)
+            }
+        } catch (e: Exception) {
+            SystemLogger.warning("KeyAdmin.status: could not load config for keyboxExpiry", e)
+        }
+        for (name in names) {
+            val exp = KeyboxInspector.earliestExpiry(name)
+            out.put(name, exp ?: JSONObject.NULL)
+        }
+        return out
     }
 
     private fun listKeys(): JSONObject {
