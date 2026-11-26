@@ -14,6 +14,21 @@
 >
 > See [`module/changelog.md`](module/changelog.md) for this release's notes.
 
+## Why this fork exists
+
+Certifying integrity through Google's newer **RKP (Remote Key Provisioning) keybox** attestation
+path worked reliably with TrickyStore, but not with the other TEE-simulation modules tried before
+this fork — they could serve a keybox, but not get RKP integrity to actually pass. At the same
+time, TrickyStore itself depends on a separate companion app (Tricky Addon) just to manage
+keyboxes and patch levels, which is one more moving part than this kind of module should need.
+
+TEESimulatorTS exists to close that gap: it's built on top of the actively-maintained
+[JingMatrix/TEESimulator](https://github.com/JingMatrix/TEESimulator) — whose in-process reference
+KeyMint TA and keybox-based attestation already satisfy RKP keybox certification — with the
+TrickyStore-style conveniences (automatic backup keybox, one-tap patch-level loading, migrating an
+existing TrickyStore setup) added directly into the module and its own WebUI, so none of that needs
+a separate addon app.
+
 *TEESimulatorTS* defeats hardware-backed [Key Attestation](https://developer.android.com/privacy-and-security/security-key-attestation) by serving selected apps from a software KeyMint that runs *inside* the real keystore daemon, while every other key stays on the device's real hardware.
 
 Rather than patch certificates after the fact, it embeds AOSP's own reference KeyMint trusted application ([`kmr-ta`](https://cs.android.com/android/platform/superproject/main/+/main:system/keymint/)) and signs attestations with a user-provided keybox. The certificates are generated the same way a real TEE generates them, so they are internally consistent by construction.
