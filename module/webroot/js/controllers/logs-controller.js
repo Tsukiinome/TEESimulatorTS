@@ -15,7 +15,7 @@ const MAX_KEPT = 4000;
 const SAVE_DIR_KEY = "teesim.logs.dir";
 const DEFAULT_SAVE_DIR = "/sdcard/Download";
 
-// The default export filename: TEESimulator-report-<version>-<variant>-<timestamp>.zip. The module
+// The default export filename: TEESimulatorTS-report-<version>-<variant>-<timestamp>.zip. The module
 // version already embeds the variant, e.g. "v4.0 (17-0375393-debug)"; sanitize it into a
 // filename-safe token (drop parens, spaces/others -> dashes) and append a local timestamp.
 function defaultLogName(version) {
@@ -25,7 +25,7 @@ function defaultLogName(version) {
       .trim()
       .replace(/[^A-Za-z0-9._-]+/g, "-")
       .replace(/^-+|-+$/g, "") || "unknown";
-  return `TEESimulator-report-${tag}-${timestamp()}.zip`;
+  return `TEESimulatorTS-report-${tag}-${timestamp()}.zip`;
 }
 
 function timestamp() {

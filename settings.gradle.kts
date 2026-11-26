@@ -14,7 +14,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TEESimulator"
+rootProject.name = "TEESimulatorTS"
 
 // The compile-only framework stubs (hidden platform APIs), then the daemon itself (which also
 // drives the native interceptor build and module packaging).

@@ -1,12 +1,11 @@
-## 🚀 TEESimulator 5.0 — this fork's first release
+## 🏷️ TEESimulatorTS 5.0.1
 
-This is [@Tsukiinome](https://github.com/Tsukiinome)'s own line of
-[JingMatrix/TEESimulator](https://github.com/JingMatrix/TEESimulator): same in-process reference
-KeyMint TA, same profiles-and-WebUI design, built on top of upstream's v4.0 with enough added on
-top — below — that it gets its own number from here rather than trailing upstream's as a patch
-release.
+Renames the module itself — and the zip it ships as — from `TEESimulator` to `TEESimulatorTS`, to
+match this fork's repository name: it now shows as **TEESimulatorTS** in KernelSU/Magisk's module
+list, and future release/canary zips read `TEESimulatorTS-...` instead of `TEESimulator-...`. Pure
+naming change, no behavior difference from 5.0.
 
-## ✨ What's new on top of upstream v4.0
+## ✨ Still on top of upstream v4.0 (first added in 5.0)
 
 - **🔁 Automatic backup keybox.** Give a profile a second keybox. Every config push, the daemon
   runs the same health check the WebUI's inspector does (parses, chains to a Google root, not on
@@ -16,9 +15,9 @@ release.
 - **⚡ One-tap "load current" for patch levels.** A button next to each patch/OS field writes the
   device's real, currently-harvested value straight into the field — no more typing a date by hand.
 - **📥 Deeper TrickyStore migration.** First install now adopts, from TrickyStore's own files under
-  `/data/adb/tricky_store`: the keybox, the app list (`target.txt`), and — new in this release —
-  the global patch-level override (`security_patch.txt`). Switching over should mean flipping a
-  module on, not re-entering everything by hand.
+  `/data/adb/tricky_store`: the keybox, the app list (`target.txt`), and the global patch-level
+  override (`security_patch.txt`). Switching over should mean flipping a module on, not
+  re-entering everything by hand.
 
 ## 💬 Feedback
 

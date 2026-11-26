@@ -10,9 +10,9 @@ on:
 jobs:
   module:
     runs-on: ubuntu-latest
-    # A "Release TEESimulator v…" commit is cut straight to a v* tag, which builds and publishes it.
+    # A "Release TEESimulatorTS v…" commit is cut straight to a v* tag, which builds and publishes it.
     # Skip its redundant dev-push build entirely so the same code never builds (or canaries) twice.
-    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/dev' && startsWith(github.event.head_commit.message, 'Release TEESimulator v')) }}
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/dev' && startsWith(github.event.head_commit.message, 'Release TEESimulatorTS v')) }}
     permissions:
       contents: write # publish canary prereleases and tagged releases
     env:
@@ -80,8 +80,8 @@ jobs:
         id: artifacts
         run: |
           set -euo pipefail
-          rel=$(ls out/TEESimulator-*-Release.zip)
-          dbg=$(ls out/TEESimulator-*-Debug.zip)
+          rel=$(ls out/TEESimulatorTS-*-Release.zip)
+          dbg=$(ls out/TEESimulatorTS-*-Debug.zip)
           mkdir -p artifact-release artifact-debug
           unzip -q "$rel" -d artifact-release
           unzip -q "$dbg" -d artifact-debug
@@ -120,21 +120,21 @@ jobs:
         run: |
           set -euo pipefail
           # Drop the -<hash> segment sitting before -Release/-Debug so the release assets read
-          # TEESimulator-<ver>-<count>-Release.zip, matching module/update.json's zipUrl.
-          for z in out/TEESimulator-*-Release.zip out/TEESimulator-*-Debug.zip; do
+          # TEESimulatorTS-<ver>-<count>-Release.zip, matching module/update.json's zipUrl.
+          for z in out/TEESimulatorTS-*-Release.zip out/TEESimulatorTS-*-Debug.zip; do
             clean=$(echo "$z" | sed -E 's/-[0-9a-f]{7,}-(Release|Debug)\.zip$/-\1.zip/')
             [ "$z" = "$clean" ] || mv "$z" "$clean"
           done
-          rel=$(ls out/TEESimulator-*-Release.zip)
-          dbg=$(ls out/TEESimulator-*-Debug.zip)
+          rel=$(ls out/TEESimulatorTS-*-Release.zip)
+          dbg=$(ls out/TEESimulatorTS-*-Debug.zip)
           # `%s` argument, never the format string, so a `%` anywhere in the changelog stays literal.
-          notes=$(printf '# TEESimulator %s\n\n%s\n' "${TAG}" "$(cat module/changelog.md)")
+          notes=$(printf '# TEESimulatorTS %s\n\n%s\n' "${TAG}" "$(cat module/changelog.md)")
           # Recreated rather than edited so a re-run replaces the assets instead of appending a second
           # copy. No --cleanup-tag: the release is rebuilt, the pushed release tag is kept.
           gh release delete "$TAG" --yes 2>/dev/null || true
           gh release create "$TAG" \
             --latest \
-            --title "TEESimulator ${TAG}" \
+            --title "TEESimulatorTS ${TAG}" \
             --notes "$notes" \
             "$rel" "$dbg"
 
@@ -180,10 +180,10 @@ jobs:
           gh release create "$tag" \
             --prerelease \
             --target "${{ github.sha }}" \
-            --title "TEESimulator canary ${code}" \
+            --title "TEESimulatorTS canary ${code}" \
             --notes "$notes" \
-            out/TEESimulator-*-Release.zip \
-            out/TEESimulator-*-Debug.zip
+            out/TEESimulatorTS-*-Release.zip \
+            out/TEESimulatorTS-*-Debug.zip
 
       # Five is enough to bisect a regression; sorted by version code (commit count, monotonic), not
       # date, which reruns and reverts can disorder.

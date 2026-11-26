@@ -1,4 +1,4 @@
-// The TEESimulator control daemon plus the native interceptors and module packaging.
+// The TEESimulatorTS control daemon plus the native interceptors and module packaging.
 //
 // Built as an Android application so AGP's R8 pass shrinks the bundled BouncyCastle down to a
 // single classes.dex (app_process runs that dex at boot). The C/C++ interceptors (inject,
@@ -36,7 +36,7 @@ abstract class GitExecutor @Inject constructor(private val execOperations: ExecO
 val gitExecutor = objects.newInstance(GitExecutor::class.java)
 val gitCommitCount = gitExecutor.execute("git rev-list HEAD --count", rootDir).toInt()
 val gitCommitHash = gitExecutor.execute("git rev-parse --verify --short HEAD", rootDir)
-val verName = "v5.0"
+val verName = "v5.0.1"
 
 android {
     namespace = "org.matrix.teesim"
@@ -152,7 +152,7 @@ fun adb(vararg args: String): List<String> = listOf("adb", *args)
 // hard requirement.
 val checkWebrootJs =
     tasks.register("checkWebrootJs") {
-        group = "TEESimulator Module Packaging"
+        group = "TEESimulatorTS Module Packaging"
         description =
             "Syntax-checks the WebUI JavaScript with `node --check` when node is available."
         val jsDir = rootProject.projectDir.resolve("module/webroot/js")
@@ -209,7 +209,7 @@ androidComponents {
 
         // Stage per variant so debug and release never clobber each other.
         val tempModuleDir = layout.buildDirectory.dir("module/${variant.name}")
-        val zipFileName = "TEESimulator-$verName-$gitCommitCount-$gitCommitHash-$capitalized.zip"
+        val zipFileName = "TEESimulatorTS-$verName-$gitCommitCount-$gitCommitHash-$capitalized.zip"
 
         // Where AGP leaves this variant's native build: stripped .so under stripped_native_libs,
         // and the injector executable (never stripped or packaged by AGP) only under
@@ -223,7 +223,7 @@ androidComponents {
         // Stage every module file. Sync clears stale files from previous runs.
         val prepareModuleFilesTask =
             tasks.register<Sync>("prepareModuleFiles${capitalized}") {
-                group = "TEESimulator Module Packaging"
+                group = "TEESimulatorTS Module Packaging"
                 description = "Prepares all files for the ${variant.name} module zip."
 
                 // Reject a WebUI JS syntax error before it ships (no-op when node is absent).
@@ -292,7 +292,7 @@ androidComponents {
         // Zip the staged module into out/.
         val zipTask =
             tasks.register<Zip>("zip${capitalized}") {
-                group = "TEESimulator Module Packaging"
+                group = "TEESimulatorTS Module Packaging"
                 description = "Creates the flashable ${variant.name} module zip in out/."
                 dependsOn(prepareModuleFilesTask)
                 archiveFileName.set(zipFileName)
@@ -304,7 +304,7 @@ androidComponents {
         fun createInstallTasks(rootProvider: String, installCli: String) {
             val pushTask =
                 tasks.register<Exec>("push${rootProvider}Module${capitalized}") {
-                    group = "TEESimulator Module Installation"
+                    group = "TEESimulatorTS Module Installation"
                     description =
                         "Pushes the ${variant.name} module zip to the device for $rootProvider."
                     dependsOn(zipTask)
@@ -319,7 +319,7 @@ androidComponents {
 
             val installTask =
                 tasks.register<Exec>("install${rootProvider}${capitalized}") {
-                    group = "TEESimulator Module Installation"
+                    group = "TEESimulatorTS Module Installation"
                     description = "Installs the ${variant.name} module via $rootProvider."
                     dependsOn(pushTask)
                     commandLine(
@@ -328,7 +328,7 @@ androidComponents {
                 }
 
             tasks.register<Exec>("install${rootProvider}AndReboot${capitalized}") {
-                group = "TEESimulator Module Installation"
+                group = "TEESimulatorTS Module Installation"
                 description = "Installs the ${variant.name} module via $rootProvider and reboots."
                 dependsOn(installTask)
                 commandLine(adb("reboot"))

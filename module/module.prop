@@ -1,5 +1,5 @@
 id=teesim
-name=TEESimulator
+name=TEESimulatorTS
 version=${REPLACEMEVER}
 versionCode=${REPLACEMEVERCODE}
 author=Tsukiinome
